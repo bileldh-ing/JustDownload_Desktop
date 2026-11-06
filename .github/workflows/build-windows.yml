@@ -1,0 +1,36 @@
+name: Build Windows desktop app
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  windows-exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install packager
+        run: python -m pip install pyinstaller==6.22.3
+      - name: Build executable
+        shell: cmd
+        run: |
+          if exist vendor\ffmpeg\ffmpeg.exe (
+            if exist vendor\ffmpeg\ffprobe.exe (
+              pyinstaller --noconfirm --clean --onefile --windowed --name JustDownload --add-data "vendor\ffmpeg;vendor\ffmpeg" app.py
+            ) else (
+              pyinstaller --noconfirm --clean --onefile --windowed --name JustDownload app.py
+            )
+          ) else (
+            pyinstaller --noconfirm --clean --onefile --windowed --name JustDownload app.py
+          )
+      - name: Package release
+        shell: pwsh
+        run: Compress-Archive -Path dist/JustDownload.exe -DestinationPath JustDownload-Windows-x64.zip -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: JustDownload-Windows-x64
+          path: JustDownload-Windows-x64.zip
